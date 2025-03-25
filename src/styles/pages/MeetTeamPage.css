@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.meet-team-page {
+  @apply min-h-screen bg-gray-50;
+}
+
+.team-hero {
+  @apply py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white text-center;
+}
+
+.team-hero h1 {
+  @apply text-4xl md:text-5xl font-bold mb-4;
+}
+
+.team-hero p {
+  @apply text-xl text-blue-100;
+}
+
+.team-members {
+  @apply py-16;
+}
+
+.container {
+  @apply max-w-6xl mx-auto px-6;
+}
+
+.members-grid {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-8 mt-12;
+}
+
+.team-card {
+  @apply bg-white rounded-xl shadow-lg overflow-hidden
+    transform transition-all duration-300
+    hover:-translate-y-2 hover:shadow-xl
+    flex flex-col h-[500px];
+}
+
+.member-image {
+  @apply h-72 overflow-hidden;
+}
+
+.member-image img {
+  @apply w-full h-full object-cover
+    transition-transform duration-500
+    hover:scale-110;
+}
+
+.member-info {
+  @apply p-6 flex flex-col flex-grow;
+}
+
+.member-info h3 {
+  @apply text-xl font-bold text-gray-800 mb-2;
+}
+
+.member-info .role {
+  @apply inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-600
+    text-sm font-medium mb-4;
+}
+
+.member-info .bio {
+  @apply text-gray-600 leading-relaxed;
+}
+
+.social-links {
+  @apply flex justify-center space-x-4 mt-auto pt-4 border-t border-gray-100;
+}
+
+.social-link {
+  @apply w-8 h-8 transition-transform hover:scale-110;
+}
+
+.social-link img {
+  @apply w-full h-full object-contain;
+}

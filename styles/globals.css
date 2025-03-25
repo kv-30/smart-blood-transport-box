@@ -1,0 +1,7 @@
+<!-- Instead of text-black/text-white, use: -->
+<p class="text-gray-800 dark:text-gray-200">Your text here</p>
+
+<!-- For parameter cards in stats page -->
+<div class="bg-gray-100 dark:bg-gray-800">
+  <!-- Card content -->
+</div>
