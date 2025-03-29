@@ -157,15 +157,16 @@ npm run build
 4. Push to the branch
 5. Open a pull request
 
-
+## Contact
+- LinkedIn: [Kaivalya Thakare](https://www.linkedin.com/in/kaivalya-thakare-9305b128b/)
+- LinkedIn: [Sanskruti Divase](https://linkedin.com/in/sanskruti-divase-455a1529a/)
+- LinkedIn: [Shubhada Shinde](https://www.linkedin.com/in/shubhada-shinde-074225323/)
 
 ## Acknowledgments
 - React.js community
 - Arduino community
 - ESP32 developers
 - [Other acknowledgments]
-
-
 
 ---
 
