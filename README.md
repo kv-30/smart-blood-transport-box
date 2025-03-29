@@ -22,7 +22,7 @@ Smart Blood Box is a web-based monitoring system designed for medical transport 
 
 ### Hardware
 - ESP32 microcontroller
-- DHT22 temperature/humidity sensor
+- DHT11 temperature/humidity sensor
 - GPS module
 - USB connectivity
 
@@ -53,10 +53,14 @@ npm run dev
 ### 4. Arduino Setup
 1. Open Arduino IDE
 2. Install required libraries:
-   - DHT sensor library
-   - ArduinoJson
-   - TinyGPS++ (if using GPS)
-3. Upload the provided Arduino code to ESP32
+   - DHT sensor library -Adafruit
+   - Tiny GPS plus-Mikal Hart
+   - Tiny Gps-ESP32 - Mikal Hart
+   - Arduino Json -Benoit Blanchon
+3. Install the following Drivers:
+   - CH340 
+   - CP210x
+4. Upload the provided Arduino code to ESP32
 
 ## Project Structure
 ```
@@ -97,16 +101,16 @@ smart-blood-box/
 
 ### Components Required
 - ESP32 Development Board
-- DHT22 Temperature/Humidity Sensor
+- DHT11 Temperature/Humidity Sensor
 - GPS Module (optional)
 - USB Cable
 - 10K Resistor (for DHT22)
 
 ### Wiring Diagram
 ```
-DHT22 Pin Layout:
-VCC  → 3.3V
-DATA → GPIO4 (with 10K pullup)
+DHT11 Pin Layout:
+VCC  → Vin
+DATA → GPI14 (with 10K pullup)
 GND  → GND
 ```
 
@@ -153,11 +157,7 @@ npm run build
 4. Push to the branch
 5. Open a pull request
 
-## License
-[Your License Here]
 
-## Authors
-[Your Name/Team]
 
 ## Acknowledgments
 - React.js community
@@ -165,11 +165,10 @@ npm run build
 - ESP32 developers
 - [Other acknowledgments]
 
-## Contact
-[Your Contact Information]
+
 
 ---
 
 **Note**: This project requires a modern browser with Web Serial API support (Chrome/Edge) for device communication.
 
-For more information or support, please [contact details/links].
+

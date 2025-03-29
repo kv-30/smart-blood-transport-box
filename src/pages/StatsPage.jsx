@@ -179,24 +179,60 @@ function StatsPage() {
 
   // Location card component
   const LocationCard = ({ location }) => {
-    const hasLocation = location && (location.lat !== 0 || location.lng !== 0);
-    
+    const hasValidLocation = location && 
+      (Math.abs(location.lat) > 0 || Math.abs(location.lng) > 0);
+
+    const formatCoordinate = (coord) => {
+      return coord.toFixed(6);
+    };
+
+    const getGoogleMapsUrl = (lat, lng) => {
+      return `https://www.google.com/maps?q=${lat},${lng}`;
+    };
+
     return (
       <div className="stats-card">
-        <h2>Location</h2>
-        <div className="stat-value">
-          {formatLocation(location)}
+        <div className="card-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <h2>Location</h2>
         </div>
-        {hasLocation && (
-          <a
-            href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="view-map-link"
-          >
-            View on Map
-          </a>
-        )}
+        <div className="card-content">
+          {hasValidLocation ? (
+            <>
+              <div className="location-coordinates">
+                <div className="coordinate">
+                  <span className="label">Latitude:</span>
+                  <span className="value">{formatCoordinate(location.lat)}°</span>
+                </div>
+                <div className="coordinate">
+                  <span className="label">Longitude:</span>
+                  <span className="value">{formatCoordinate(location.lng)}°</span>
+                </div>
+              </div>
+              <a
+                href={getGoogleMapsUrl(location.lat, location.lng)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="view-map-button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                View on Maps
+              </a>
+            </>
+          ) : (
+            <div className="no-location">
+              <span>Acquiring GPS signal...</span>
+              <div className="loading-spinner"></div>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
