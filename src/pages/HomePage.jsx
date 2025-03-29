@@ -38,7 +38,8 @@ const HomePage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <div key={index} className="bg-gray-50 dark:bg-gray-800 shadow-lg rounded-lg">
+            <div key={index} className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-md 
+                 transition-all duration-300 hover:shadow-xl hover:scale-105">
               <div className="h-12 w-12 rounded-lg bg-primary-100 flex items-center justify-center mb-4">
                 {feature.icon}
               </div>

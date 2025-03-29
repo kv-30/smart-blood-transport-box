@@ -1,224 +1,288 @@
-import React, { useEffect, useState } from 'react';
-import { esp32Service } from '../services/esp32Service';
-import "../styles/pages/StatsPage.css";
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import React, { useState, useEffect } from 'react';
+import '../styles/pages/StatsPage.css';
 
-const StatsPage = () => {
+function StatsPage() {
+  const [port, setPort] = useState(null);
+  const [reader, setReader] = useState(null);
+  const [deviceInfo, setDeviceInfo] = useState(null);
   const [sensorData, setSensorData] = useState({
-    temperature: 0,
-    humidity: 0,
-    location: {
-      latitude: 18.4575,
-      longitude: 73.8508
-    }
+    temperature: null,
+    humidity: null,
+    location: { lat: 0, lng: 0 }
   });
-  const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
+  // Disconnect from the device
+  const disconnectDevice = async () => {
+    try {
+      if (reader) {
+        await reader.cancel();
+        setReader(null);
+      }
+      if (port) {
+        await port.close();
+        setPort(null);
+      }
+      setIsConnected(false);
+      setDeviceInfo(null);
+      console.log("Device disconnected successfully");
+    } catch (error) {
+      console.error('Disconnect error:', error);
+      setError(`Disconnect error: ${error.message}`);
+    }
+  };
+
+  // Get device information
+  const getDeviceInfo = async (port) => {
+    try {
+      const info = await port.getInfo();
+      return `ESP32 Device (${info.usbVendorId}:${info.usbProductId})`;
+    } catch (error) {
+      console.warn('Could not get device info:', error);
+      return 'Connected Device';
+    }
+  };
+
+  // Read data from the serial port
+  const readSerialData = async (port) => {
+    try {
+      // Create a TextDecoder to decode the bytes
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      // Get a reader and store it in state
+      const reader = port.readable.getReader();
+      setReader(reader);
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          // Reader has been canceled
+          break;
+        }
+        
+        // Decode the received bytes and add to buffer
+        const text = decoder.decode(value);
+        buffer += text;
+        
+        // Extract JSON messages between ### and $$$
+        let startIndex = buffer.indexOf('###');
+        let endIndex = buffer.indexOf('$$$');
+        
+        while (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
+          const jsonString = buffer.substring(startIndex + 3, endIndex);
+          try {
+            const data = JSON.parse(jsonString);
+            if (data.marker === 'SBB_DATA') {
+              // Update data state with formatted values
+              setSensorData({
+                temperature: Number(data.temperature).toFixed(1),
+                humidity: Number(data.humidity).toFixed(1),
+                location: data.location || { lat: 0, lng: 0 }
+              });
+              setLastUpdateTime(new Date().toLocaleTimeString());
+              console.log("Data updated:", data);
+            }
+          } catch (e) {
+            console.warn('JSON parse error:', e);
+          }
+          
+          // Remove the processed message from buffer
+          buffer = buffer.substring(endIndex + 3);
+          
+          // Look for next message
+          startIndex = buffer.indexOf('###');
+          endIndex = buffer.indexOf('$$$');
+        }
+        
+        // Prevent buffer from growing too large
+        if (buffer.length > 500) {
+          buffer = buffer.substring(buffer.length - 500);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Read error:', error);
+      // Handle errors appropriately
+      if (error.name === 'BufferOverrunError') {
+        console.log("Recovering from buffer overrun...");
+        // Try to reconnect to the port
+        if (port.readable) {
+          readSerialData(port);
+        }
+      } else {
+        setError(`Read error: ${error.message}`);
+        setIsConnected(false);
+      }
+    }
+  };
+
+  // Connect to the device
+  const connectToDevice = async () => {
+    try {
+      // Reset any error states
+      setError(null);
+      
+      // Check if Web Serial API is supported
+      if (!navigator.serial) {
+        throw new Error('Web Serial API not supported. Use Chrome or Edge browser.');
+      }
+      
+      // First disconnect if already connected
+      if (isConnected) {
+        await disconnectDevice();
+      }
+      
+      // Request a port
+      const newPort = await navigator.serial.requestPort();
+      
+      // Open the port
+      await newPort.open({ baudRate: 115200 });
+      
+      // Get device info
+      const deviceName = await getDeviceInfo(newPort);
+      setDeviceInfo(deviceName);
+      
+      setPort(newPort);
+      setIsConnected(true);
+      
+      console.log("Connected to device successfully");
+      
+      // Start reading data
+      readSerialData(newPort);
+      
+    } catch (error) {
+      console.error('Connection error:', error);
+      setError(`Connection error: ${error.message}`);
+      setIsConnected(false);
+    }
+  };
+
+  // Clean up on component unmount
   useEffect(() => {
-    const connectESP32 = async () => {
-      try {
-        await esp32Service.connect();
-        esp32Service.onData((data) => {
-          setSensorData(data);
-        });
-      } catch (error) {
-        console.error('Connection failed:', error);
+    return () => {
+      if (isConnected) {
+        disconnectDevice();
       }
     };
+  }, [isConnected]);
 
-    connectESP32();
+  // Format location display
+  const formatLocation = (location) => {
+    if (!location || (location.lat === 0 && location.lng === 0)) {
+      return "Not Available";
+    }
+    return `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
+  };
 
-    return () => {
-      esp32Service.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [selectedTimeRange]);
+  // Location card component
+  const LocationCard = ({ location }) => {
+    const hasLocation = location && (location.lat !== 0 || location.lng !== 0);
+    
+    return (
+      <div className="stats-card">
+        <h2>Location</h2>
+        <div className="stat-value">
+          {formatLocation(location)}
+        </div>
+        {hasLocation && (
+          <a
+            href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="view-map-link"
+          >
+            View on Map
+          </a>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-display font-bold text-neutral-900">
-          Live Statistics
-        </h1>
-        <p className="mt-4 text-lg text-neutral-600">
-          Real-time monitoring of temperature, humidity, and location data
-        </p>
-      </div>
+    <div className="stats-page">
+      <div className="stats-container">
+        {/* Page Title */}
+        <div className="page-title">
+          <h1>Live Statistics</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Real-time monitoring of temperature, humidity, and location data
+          </p>
+        </div>
 
-      {/* Time Range Selector */}
-      <div className="flex justify-center space-x-4">
-        {['24h', '7d', '30d', '1y'].map((range) => (
-          <button
-            key={range}
-            onClick={() => setSelectedTimeRange(range)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedTimeRange === range
-                ? 'bg-primary-100 text-primary-700'
-                : 'text-neutral-600 hover:bg-neutral-100'
-            }`}
-          >
-            {range}
-          </button>
-        ))}
-      </div>
+        {/* Error Message */}
+        {error && (
+          <div className="alert alert-danger">
+            <p>{error}</p>
+          </div>
+        )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {currentStats.map((stat, index) => (
-          <div key={index} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-md">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-gray-600 dark:text-gray-300">{stat.label}</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">{stat.value}</p>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                stat.change >= 0
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {stat.change >= 0 ? '+' : ''}{stat.change}%
+        {/* Connection Status and Button */}
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <div className="flex items-center gap-2">
+            <span className={`status-indicator ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+              {isConnected ? `Connected to ${deviceInfo || 'Device'}` : "Disconnected"}
+            </span>
+            {lastUpdateTime && 
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Last update: {lastUpdateTime}
               </span>
+            }
+          </div>
+          <button 
+            className={`btn ${isConnected ? 'btn-danger' : 'btn-primary'}`}
+            onClick={isConnected ? disconnectDevice : connectToDevice}
+          >
+            {isConnected ? "Disconnect Device" : "Connect Device"}
+          </button>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="stats-grid">
+          <div className="stats-card">
+            <div className="card-header">
+              <h2 className="card-title">Temperature</h2>
             </div>
-            <div className="mt-4 h-16">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stat.data}>
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke={stat.change >= 0 ? '#059669' : '#DC2626'}
-                    fill={stat.change >= 0 ? '#D1FAE5' : '#FEE2E2'}
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="value-display">
+              {sensorData.temperature !== null ? sensorData.temperature : "N/A"}
+              <span className="unit">°C</span>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Main Chart */}
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-md">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-gray-900 dark:text-gray-100 text-lg font-semibold">
-            Temperature History
-          </h3>
-          <div className="flex items-center space-x-2">
-            <span className="h-3 w-3 rounded-full bg-primary-500"></span>
-            <span className="text-gray-700 dark:text-gray-200 text-sm">Temperature (°C)</span>
+          <div className="stats-card">
+            <div className="card-header">
+              <h2 className="card-title">Humidity</h2>
+            </div>
+            <div className="value-display">
+              {sensorData.humidity !== null ? sensorData.humidity : "N/A"}
+              <span className="unit">%</span>
+            </div>
           </div>
-        </div>
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={temperatureData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis
-                dataKey="time"
-                stroke="#6B7280"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#6B7280"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value}°C`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="temperature"
-                stroke="#0EA5E9"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
 
-      {/* Location Map */}
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-md">
-        <h3 className="text-gray-900 dark:text-gray-100 text-lg font-semibold mb-6">
-          Current Location
-        </h3>
-        <div className="bg-gray-50 dark:bg-gray-800">
-          <h2 className="text-gray-900 dark:text-gray-100">Map integration coming soon</h2>
-          <p className="text-gray-600 dark:text-gray-300"></p>
+          <div className="stats-card">
+            <div className="card-header">
+              <h2 className="card-title">Location</h2>
+            </div>
+            <div className="value-display text-base">
+              {formatLocation(sensorData.location)}
+            </div>
+            {sensorData.location && (sensorData.location.lat !== 0 || sensorData.location.lng !== 0) && (
+              <a
+                href={`https://www.google.com/maps?q=${sensorData.location.lat},${sensorData.location.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline mt-4"
+              >
+                View on Map
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
-};
-
-// Sample data
-const currentStats = [
-  {
-    label: 'Current Temperature',
-    value: '4.2°C',
-    change: 0.8,
-    data: Array.from({ length: 24 }, (_, i) => ({
-      value: 4 + Math.random() * 0.5,
-    })),
-  },
-  {
-    label: 'Humidity',
-    value: '45%',
-    change: -2.3,
-    data: Array.from({ length: 24 }, (_, i) => ({
-      value: 45 + Math.random() * 5,
-    })),
-  },
-  {
-    label: 'Battery Level',
-    value: '82%',
-    change: -5.4,
-    data: Array.from({ length: 24 }, (_, i) => ({
-      value: 82 - i * 0.5 + Math.random() * 2,
-    })),
-  },
-  {
-    label: 'Signal Strength',
-    value: '95%',
-    change: 1.2,
-    data: Array.from({ length: 24 }, (_, i) => ({
-      value: 95 + Math.random() * 3,
-    })),
-  },
-];
-
-const temperatureData = Array.from({ length: 24 }, (_, i) => ({
-  time: `${i}:00`,
-  temperature: 4 + Math.random() * 0.5,
-}));
+}
 
 export default StatsPage;
