@@ -54,28 +54,44 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Temperature Guidelines Section */}
       <section className="py-16 bg-gray-50 dark:bg-gray-800">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-display font-bold text-gray-900 dark:text-gray-100">
-            Impact Statistics
+            Transport Temperature Guidelines
           </h2>
           <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-            Making a difference in blood transport safety
+            Maintaining proper temperature is crucial for blood component viability
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {stats.map((stat, index) => (
-            <div key={index} className="text-center">
-              <p className="text-4xl font-bold text-primary-600">
-                {stat.value}
-              </p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {stat.label}
-              </p>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
+          <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Whole Blood & Red Blood Cells
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              Should be transported at temperature range of 1°C to 10°C
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Platelets
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              Require a temperature range of 20°C to 24°C
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Plasma (Frozen)
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              Must remain frozen during transport, typically at ≤ -25°C
+            </p>
+          </div>
         </div>
       </section>
 
@@ -130,24 +146,6 @@ const features = [
   },
 ];
 
-// Stats data
-const stats = [
-  {
-    value: '99.9%',
-    label: 'Temperature Accuracy',
-  },
-  {
-    value: '24/7',
-    label: 'Monitoring',
-  },
-  {
-    value: '15min',
-    label: 'Response Time',
-  },
-  {
-    value: '100%',
-    label: 'Safety Record',
-  },
-];
+
 
 export default HomePage;
