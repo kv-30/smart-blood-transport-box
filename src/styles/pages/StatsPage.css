@@ -279,3 +279,15 @@
 .guidelines-section {
   @apply max-w-6xl mx-auto;
 }
+
+.temperature-alert {
+  @apply bg-red-50 dark:bg-red-900 border-2 border-red-500;
+}
+
+.temperature-alert .card-title {
+  @apply text-red-700 dark:text-red-300;
+}
+
+.temperature-alert .value-display {
+  @apply text-red-600 dark:text-red-300;
+}

@@ -5,6 +5,8 @@ import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
 import StatsPage from './pages/StatsPage'
 import MeetTeamPage from './pages/MeetTeamPage'
+import { DeviceProvider } from './context/DeviceContext'
+import { Cleanup } from './components/Cleanup'
 
 function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -30,23 +32,26 @@ function App() {
   }
 
   return (
-    <Router future={{ v7_startTransition: true }}>
-      <div className="min-h-screen bg-white dark:bg-gray-900">
-        <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
-        <main className="pt-16">
-          {/* Page Container */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/stats" element={<StatsPage />} />
-              <Route path="/team" element={<MeetTeamPage />} />
-              <Route path="*" element={<div>Page not found</div>} />
-            </Routes>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+    <DeviceProvider>
+      <Cleanup />
+      <Router future={{ v7_startTransition: true }}>
+        <div className="min-h-screen bg-white dark:bg-gray-900">
+          <Header darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+          <main className="pt-16">
+            {/* Page Container */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/stats" element={<StatsPage />} />
+                <Route path="/team" element={<MeetTeamPage />} />
+                <Route path="*" element={<div>Page not found</div>} />
+              </Routes>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      </Router>
+    </DeviceProvider>
   )
 }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/pages/StatsPage.css';
+import { useDevice } from '../context/DeviceContext';
 
 // Add this component before the main StatsPage component
 const TemperatureGuidelinesCard = () => {
@@ -30,18 +31,24 @@ const TemperatureGuidelinesCard = () => {
 };
 
 function StatsPage() {
-  const [port, setPort] = useState(null);
-  const [reader, setReader] = useState(null);
-  const [deviceInfo, setDeviceInfo] = useState(null);
-  const [sensorData, setSensorData] = useState({
-    temperature: null,
-    humidity: null,
-    location: { lat: 0, lng: 0 }
-  });
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastUpdateTime, setLastUpdateTime] = useState(null);
-  const [bloodProduct, setBloodProduct] = useState('whole_blood');
+  const {
+    port,
+    setPort,
+    reader,
+    setReader,
+    deviceInfo,
+    setDeviceInfo,
+    sensorData,
+    setSensorData,
+    isConnected,
+    setIsConnected,
+    error,
+    setError,
+    lastUpdateTime,
+    setLastUpdateTime,
+    bloodProduct,
+    setBloodProduct
+  } = useDevice();
 
   // Disconnect from the device
   const disconnectDevice = async () => {
@@ -189,14 +196,13 @@ function StatsPage() {
     }
   };
 
-  // Clean up on component unmount
+  // Remove useEffect cleanup as we want to maintain connection
   useEffect(() => {
-    return () => {
-      if (isConnected) {
-        disconnectDevice();
-      }
-    };
-  }, [isConnected]);
+    // Only start reading if we have a port but no active reader
+    if (port && isConnected && !reader) {
+      readSerialData(port);
+    }
+  }, [port, isConnected, reader]);
 
   // Format location display
   const formatLocation = (location) => {
@@ -282,6 +288,8 @@ function StatsPage() {
         return temp >= 20 && temp <= 24;
       case 'plasma':
         return temp < -25;
+      case 'testing':
+        return temp >= 25 && temp <= 40;
       default:
         return true;
     }
@@ -297,6 +305,8 @@ function StatsPage() {
         return '20°C to 24°C';
       case 'plasma':
         return 'Below -25°C';
+      case 'testing':
+        return '25°C to 40°C';
       default:
         return 'Not specified';
     }
@@ -335,15 +345,19 @@ function StatsPage() {
             <option value="red_blood_cells">Red Blood Cells</option>
             <option value="platelets">Platelets</option>
             <option value="plasma">Plasma</option>
+            <option value="testing">Testing</option>
           </select>
         </div>
 
         {/* Stats Grid - Main Parameters */}
         <div className="stats-grid mb-8">
           <div className={`stats-card ${
+            isConnected && 
             sensorData.temperature !== null && 
-            !checkTemperatureRange(sensorData.temperature, bloodProduct) 
-              ? 'temperature-alert' : ''}`}>
+            !checkTemperatureRange(parseFloat(sensorData.temperature), bloodProduct) 
+              ? 'temperature-alert' 
+              : ''
+          }`}>
             <div className="card-header">
               <div className="card-icon">
                 {/* Temperature icon */}
