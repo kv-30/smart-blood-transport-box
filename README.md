@@ -1,4 +1,4 @@
-# Smart Blood Box - Real-time Medical Transport Monitoring System
+# Smart Blood Transport Box - Real-time Medical Transport Monitoring System
 
 ## Overview
 Smart Blood Box is a web-based monitoring system designed for medical transport applications. It provides real-time tracking of temperature, humidity, and location data for sensitive medical supplies during transport using an ESP32-based sensor system.
