@@ -166,7 +166,7 @@ npm run build
 - React.js community
 - Arduino community
 - ESP32 developers
-- [Other acknowledgments]
+
 
 ---
 
