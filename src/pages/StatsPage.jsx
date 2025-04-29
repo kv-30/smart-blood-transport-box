@@ -1,27 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/pages/StatsPage.css';
 import { useDevice } from '../context/DeviceContext';
 
-// Add this component before the main StatsPage component
 const TemperatureGuidelinesCard = () => {
   return (
-    <div className="stats-card">
-      <div className="card-header">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
+      <div className="flex items-center justify-between mb-4">
         <svg className="text-gray-700 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
         </svg>
-        <h2 className="card-title">Temperature Guidelines</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Temperature Guidelines</h2>
       </div>
-      <div className="guidelines-list space-y-3 mt-4">
-        <div className="guideline-item">
+      <div className="space-y-3 mt-4">
+        <div>
           <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Whole Blood & RBC</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">1°C to 10°C</p>
         </div>
-        <div className="guideline-item">
+        <div>
           <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Platelets</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">20°C to 24°C</p>
         </div>
-        <div className="guideline-item">
+        <div>
           <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Plasma (Frozen)</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">≤ -25°C</p>
         </div>
@@ -49,10 +47,15 @@ function StatsPage() {
     bloodProduct,
     setBloodProduct
   } = useDevice();
+  const [dataInterval, setDataInterval] = useState(null);
 
   // Disconnect from the device
   const disconnectDevice = async () => {
     try {
+      if (dataInterval) {
+        clearInterval(dataInterval);
+        setDataInterval(null);
+      }
       if (reader) {
         await reader.cancel();
         setReader(null);
@@ -81,6 +84,36 @@ function StatsPage() {
     }
   };
 
+  // Add this function to handle database operations
+  const sendDataToDatabase = async (data) => {
+    try {
+      const response = await fetch('/api/readings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temperature: data.temperature,
+          humidity: data.humidity,
+          latitude: data.location?.lat || 0,
+          longitude: data.location?.lng || 0,
+          blood_product: bloodProduct,
+          timestamp: new Date().toISOString() // Add timestamp
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Data saved successfully:', result);
+    } catch (err) {
+      console.error('Failed to store reading:', err);
+      setError(`Database error: ${err.message}`);
+    }
+  };
+
   // Read data from the serial port
   const readSerialData = async (port) => {
     try {
@@ -91,6 +124,15 @@ function StatsPage() {
       // Get a reader and store it in state
       const reader = port.readable.getReader();
       setReader(reader);
+
+      // Set up interval for sending data to database
+      const interval = setInterval(() => {
+        if (sensorData && isConnected) {
+          sendDataToDatabase(sensorData);
+        }
+      }, 10000); // Send data every 10 seconds
+      
+      setDataInterval(interval);
       
       while (true) {
         const { value, done } = await reader.read();
@@ -118,6 +160,7 @@ function StatsPage() {
                 humidity: Number(data.humidity).toFixed(1),
                 location: data.location || { lat: 0, lng: 0 }
               });
+              
               setLastUpdateTime(new Date().toLocaleTimeString());
               console.log("Data updated:", data);
             }
@@ -139,7 +182,11 @@ function StatsPage() {
         }
       }
       
-    } catch (error) {
+      } catch (error) {
+      if (dataInterval) {
+        clearInterval(dataInterval);
+        setDataInterval(null);
+      }
       console.error('Read error:', error);
       // Handle errors appropriately
       if (error.name === 'BufferOverrunError') {
@@ -225,53 +272,41 @@ function StatsPage() {
       return `https://www.google.com/maps?q=${lat},${lng}`;
     };
 
-    return (
-      <div className="stats-card">
-        <div className="card-header">
+  return (
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg transition-all duration-300">
+        <div className="flex items-center justify-between mb-4">
           <svg className="text-gray-700 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Location</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Location</h2>
         </div>
-        <div className="card-content">
+        <div className="space-y-3 mt-4">
           {isConnected ? (
             hasValidLocation ? (
               <>
-                <div className="location-coordinates">
-                  <div className="coordinate">
-                    <span className="label text-gray-600 dark:text-gray-400">Latitude:</span>
-                    <span className="value text-gray-900 dark:text-gray-100">{formatCoordinate(location.lat)}°</span>
-                  </div>
-                  <div className="coordinate">
-                    <span className="label text-gray-600 dark:text-gray-400">Longitude:</span>
-                    <span className="value text-gray-900 dark:text-gray-100">{formatCoordinate(location.lng)}°</span>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Latitude:</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{formatCoordinate(location.lat)}°</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Longitude:</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{formatCoordinate(location.lng)}°</p>
                 </div>
                 <a
                   href={getGoogleMapsUrl(location.lat, location.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="view-map-button"
+                  className="text-blue-500 hover:text-blue-700"
                 >
-                  <svg className="text-primary-600 dark:text-primary-400" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                  <span className="text-primary-600 dark:text-primary-400">View on Maps</span>
+                  View on Maps
                 </a>
               </>
             ) : (
-              <div className="no-location">
-                <span className="text-gray-600 dark:text-gray-400">Acquiring GPS signal...</span>
-                <div className="loading-spinner"></div>
-              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Acquiring GPS signal...</div>
             )
           ) : (
-            <div className="no-location">
-              <span className="text-gray-600 dark:text-gray-400">Device not connected</span>
-            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Device not connected</div>
           )}
         </div>
       </div>
@@ -312,13 +347,12 @@ function StatsPage() {
     }
   };
 
-  // Update the stats section layout
   return (
-    <div className="stats-page">
-      <div className="stats-container">
-        <div className="page-header">
-          <h1 className="page-title">Live Statistics</h1>
-          <p className="page-description">
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Live Statistics</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Real-time monitoring of temperature, humidity, and location data
           </p>
         </div>
@@ -327,7 +361,11 @@ function StatsPage() {
         <div className="flex justify-center mb-8">
           <button 
             onClick={isConnected ? disconnectDevice : connectToDevice}
-            className={`btn ${isConnected ? 'btn-danger' : 'btn-primary'}`}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+              isConnected 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
           >
             {isConnected ? 'Disconnect Device' : 'Connect Device'}
           </button>
@@ -335,11 +373,11 @@ function StatsPage() {
 
         {/* Product Selection */}
         <div className="flex flex-col items-center mb-8">
-          <h2 className="section-title">What are you transporting?</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">What are you transporting?</h2>
           <select
             value={bloodProduct}
             onChange={(e) => setBloodProduct(e.target.value)}
-            className="select-menu"
+            className="w-64 px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
           >
             <option value="whole_blood">Whole Blood</option>
             <option value="red_blood_cells">Red Blood Cells</option>
@@ -350,55 +388,49 @@ function StatsPage() {
         </div>
 
         {/* Stats Grid - Main Parameters */}
-        <div className="stats-grid mb-8">
-          <div className={`stats-card ${
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className={`bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg ${
             isConnected && 
             sensorData.temperature !== null && 
             !checkTemperatureRange(parseFloat(sensorData.temperature), bloodProduct) 
-              ? 'temperature-alert' 
+              ? 'border-2 border-red-500' 
               : ''
           }`}>
-            <div className="card-header">
-              <div className="card-icon">
-                {/* Temperature icon */}
-              </div>
-              <h2 className="card-title">Temperature</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Temperature</h2>
             </div>
-            <div className="value-display">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {isConnected ? (
                 sensorData.temperature !== null ? (
                   <>
                     {sensorData.temperature}
-                    <span className="unit">°C</span>
+                    <span className="text-xl ml-1">°C</span>
                   </>
                 ) : (
                   <span className="text-gray-600 dark:text-gray-400">N/A</span>
                 )
               ) : (
-                <span className="text-gray-600 dark:text-gray-400 text-sm">Device not connected</span>
+                <span className="text-gray-600 dark:text-gray-400 text-base">Device not connected</span>
               )}
             </div>
           </div>
 
-          <div className="stats-card">
-            <div className="card-header">
-              <div className="card-icon">
-                {/* Humidity icon */}
-              </div>
-              <h2 className="card-title">Humidity</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Humidity</h2>
             </div>
-            <div className="value-display">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {isConnected ? (
                 sensorData.humidity !== null ? (
                   <>
                     {sensorData.humidity}
-                    <span className="unit">%</span>
+                    <span className="text-xl ml-1">%</span>
                   </>
                 ) : (
                   <span className="text-gray-600 dark:text-gray-400">N/A</span>
                 )
               ) : (
-                <span className="text-gray-600 dark:text-gray-400 text-sm">Device not connected</span>
+                <span className="text-gray-600 dark:text-gray-400 text-base">Device not connected</span>
               )}
             </div>
           </div>
@@ -409,7 +441,7 @@ function StatsPage() {
         {/* Temperature Guidelines Section */}
         <section className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 mt-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               Transport Temperature Guidelines
             </h2>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
@@ -419,28 +451,28 @@ function StatsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                 Whole Blood & Red Blood Cells
               </h3>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-400">
                 Should be transported at temperature range of 1°C to 10°C
               </p>
             </div>
 
             <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                 Platelets
               </h3>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-400">
                 Require a temperature range of 20°C to 24°C
               </p>
             </div>
 
             <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                 Plasma (Frozen)
               </h3>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-400">
                 Must remain frozen during transport, typically at ≤ -25°C
               </p>
             </div>
